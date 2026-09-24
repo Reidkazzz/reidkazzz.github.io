@@ -1,0 +1,135 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Margin of Safety Screener · Reid Kaczynski</title>
+  <meta name="description" content="Screen stocks that trade below three estimates of intrinsic value.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="page">
+    <header class="masthead">
+      <a class="backlink" href="../index.html">← Portfolio</a>
+      <div class="brand">
+        <span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M3 17L9 11L13 15L21 6" stroke="white" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/><path d="M21 6H15M21 6V12" stroke="white" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+        <h1>Margin of Safety Screener</h1>
+      </div>
+      <p>Finds stocks trading below what three valuation models say they are worth, then ranks them by how wide the gap is and how cheap they look on earnings, cash flow and book value.</p>
+    </header>
+
+    <div class="layout">
+      <aside class="controls" aria-label="Screen settings">
+        <section class="group">
+          <h2>Data</h2>
+          <label for="key">Finnhub API key</label>
+          <input id="key" type="password" autocomplete="off" spellcheck="false" placeholder="Paste your key">
+          <label class="check" title="Saves your key unencrypted in this browser's local storage. Other pages on the same site, or anyone using this device, could read it. Leave unchecked on shared computers."><input id="remember" type="checkbox"> Remember on this device</label>
+          <p class="hint">Free at <a href="https://finnhub.io/register" target="_blank" rel="noopener">finnhub.io</a>. The key stays in your browser and is only sent to Finnhub. If you tick Remember, it is stored unencrypted, so skip that on shared computers.</p>
+        </section>
+
+        <section class="group">
+          <h2>Stocks to screen</h2>
+          <label for="tickers">Tickers, separated by spaces or commas</label>
+          <textarea id="tickers" rows="5" spellcheck="false"></textarea>
+          <button id="loadWatchlist" class="link" type="button">Load growth watchlist</button>
+          <p class="hint">The free plan allows roughly 50 calls a minute and each stock takes two, so 60 tickers take about 3 minutes. Results are saved for 12 hours.</p>
+        </section>
+
+        <section class="group">
+          <h2>Valuation assumptions</h2>
+          <div class="pair">
+            <div><label for="discount">Discount rate %</label><input id="discount" type="number" step="0.5" min="1" value="10"></div>
+            <div><label for="termG">Terminal growth %</label><input id="termG" type="number" step="0.5" min="0" value="2.5"></div>
+            <div><label for="gCap">Growth cap %</label><input id="gCap" type="number" step="1" min="0" value="15"></div>
+            <div><label for="aaa">AAA bond yield %</label><input id="aaa" type="number" step="0.1" min="0.1" value="5"></div>
+          </div>
+          <p class="hint">Changing these updates the table instantly, with no new data calls.</p>
+        </section>
+
+        <section class="group">
+          <h2>Filters</h2>
+          <div class="keyfilters">
+            <p class="keytag">Key filters (small-cap growth)</p>
+            <div class="pair">
+              <div><label for="fCapMin">Min market cap $M</label><input id="fCapMin" type="number" step="50" min="0"></div>
+              <div><label for="fCapMax">Max market cap $M</label><input id="fCapMax" type="number" step="50" min="0"></div>
+              <div class="wide"><label for="fRev">Min revenue growth % (YoY)</label><input id="fRev" type="number" step="1"></div>
+            </div>
+          </div>
+          <div class="pair">
+            <div><label for="fMos">Min margin of safety %</label><input id="fMos" type="number" step="5" value="20"></div>
+            <div><label for="fPe">Max P/E</label><input id="fPe" type="number" step="1" value="30"></div>
+            <div><label for="fRoe">Min ROE %</label><input id="fRoe" type="number" step="1" value="8"></div>
+            <div><label for="fDe">Max debt / equity</label><input id="fDe" type="number" step="0.1" value="2"></div>
+          </div>
+          <label class="check"><input id="fFcf" type="checkbox" checked> Require positive free cash flow</label>
+          <label class="check"><input id="showMisses" type="checkbox"> Also show stocks that miss a filter (dimmed)</label>
+          <p class="hint">Leave a box empty to turn that filter off. A stock missing a metric you filter on is hidden. Revenue growth is the latest quarter against the same quarter a year earlier.</p>
+          <button id="presetGrowth" class="link" type="button">Small-cap growth preset</button>
+          <p class="hint">Sets market cap $300M to $2B and revenue growth of 17% or more, and turns off the value filters. The value estimates rely on trailing earnings and lean on the growth rate, so treat them cautiously for fast growers.</p>
+        </section>
+
+        <section class="group">
+          <h2>Position size calculator</h2>
+          <div class="pair">
+            <div><label for="pAcct">Account size $</label><input id="pAcct" type="number" min="0" step="100"></div>
+            <div><label for="pRisk">Risk per trade %</label><input id="pRisk" type="number" min="0" step="0.5"></div>
+            <div><label for="pEntry">Entry price $</label><input id="pEntry" type="number" min="0" step="0.01"></div>
+            <div><label for="pStop">Stop price $</label><input id="pStop" type="number" min="0" step="0.01"></div>
+          </div>
+          <p id="calcOut" class="hint" aria-live="polite"></p>
+          <p class="hint">Sizes a long position so that hitting your stop costs about your chosen percent of the account. Price gaps, such as after earnings, can fill below the stop and lose more. Small caps gap often. This is arithmetic, not advice, and nothing here is saved.</p>
+        </section>
+
+        <div class="actions">
+          <button id="run" class="primary" type="button">Run screen</button>
+          <button id="stop" type="button" hidden>Stop</button>
+        </div>
+        <div class="actions secondary">
+          <button id="demo" class="link" type="button">Sample data</button>
+          <button id="clear" class="link" type="button">Clear saved data</button>
+        </div>
+      </aside>
+
+      <main class="results" aria-live="polite">
+        <div id="banner" class="banner" hidden>Sample data: these companies and numbers are invented so you can preview the layout. Run a real screen to replace them.</div>
+
+        <div class="statusbar">
+          <p id="status" class="status">Add your Finnhub key, check the ticker list, and press Run screen.</p>
+          <progress id="progress" max="1" value="0" hidden></progress>
+        </div>
+
+        <div class="tablebar">
+          <p id="count" class="count"></p>
+          <button id="export" class="link" type="button" hidden>Export CSV</button>
+        </div>
+
+        <div id="tablewrap" class="table-wrap" hidden></div>
+        <p id="footnote" class="footnote" hidden><strong>Footnote.</strong> Under each ticker, the green or red line says how far the stock beats or misses your active filters. Percentages such as revenue growth, ROE and margin of safety are compared in percentage points (pts). P/E, debt/equity and market cap are compared as a percent of the limit. Green cells meet the market cap or revenue growth filter, red cells miss it, and dimmed rows miss at least one filter. Open a row for the full filter check.</p>
+        <div id="empty" class="empty">
+          <p>Results appear here as each stock loads. Every row shows where today's price sits against the estimated value: the tick marks fair value, and a bar that stops short of it means a discount.</p>
+        </div>
+        <p id="failures" class="failures" hidden></p>
+
+        <details class="method">
+          <summary>How value is estimated, and what this can miss</summary>
+          <div class="method-body">
+            <p><strong>Graham number.</strong> The square root of 22.5 × earnings per share × book value per share. It is the price at which a stock trades at 15× earnings and 1.5× book, Benjamin Graham's ceiling for a defensive investor.</p>
+            <p><strong>Discounted cash flow.</strong> Free cash flow per share is grown for ten years, with the growth rate fading from the company's recent 5-year average toward the terminal rate, then discounted at your discount rate. The terminal value uses the standard growing perpetuity.</p>
+            <p><strong>Graham growth formula.</strong> Earnings per share × (8.5 + 2 × growth) × 4.4 ÷ the AAA bond yield.</p>
+            <p><strong>Estimated value</strong> is the median of the models that can run. <strong>Margin of safety</strong> is (value − price) ÷ value. <strong>Score</strong> is a 0–100 rank against the other stocks loaded: 40% margin of safety, 20% free cash flow yield, 20% earnings yield, 10% book value yield, 10% return on equity.</p>
+            <p><strong>Limits.</strong> All three models lean on trailing numbers, so they flatter cyclical companies at a peak and punish growth companies that reinvest heavily. Banks and insurers need different models, since free cash flow is not meaningful for them. A low price is often a real problem, so read the flags on each row and check the filings before acting. This is a screening tool, not investment advice.</p>
+          </div>
+        </details>
+      </main>
+    </div>
+  </div>
+
+  <script src="valuation.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
