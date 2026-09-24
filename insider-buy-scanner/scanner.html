@@ -38,7 +38,7 @@ const esc = (s) => String(s == null ? "" : s).replace(/[&<>"']/g, (c) => ESC[c])
 const usd = (n) => n == null ? "—" : n >= 1e9 ? "$" + (n / 1e9).toFixed(2) + "B" : n >= 1e6 ? "$" + (n / 1e6).toFixed(2) + "M" : "$" + Math.round(n).toLocaleString();
 const px = (n) => n == null ? "—" : "$" + Number(n).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 4});
 const safeUrl = (u) => String(u).indexOf("https://www.sec.gov/") === 0 ? u : "#";
-const DATA_BASE = "https://reidkazzz.github.io/insider-buy-scanner/data/";
+const DATA_BASE = "https://raw.githubusercontent.com/Reidkazzz/insider-buy-scanner/main/data/";
 let data = null;
 
 let pol = null, polMeta = null;
